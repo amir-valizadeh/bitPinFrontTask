@@ -1,6 +1,7 @@
 import React from "react";
 
-function Card({ item }: { item: any; marketId: string }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function Card({ item }: { item: any; }) {
   return (
     <div className="card body">
       <h3>{item.title}</h3>

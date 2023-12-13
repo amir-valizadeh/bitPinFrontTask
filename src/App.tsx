@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 import { w3cwebsocket as W3CWebSocket } from "websocket";
 import Card from "./components/Cards.component";
 
 function App() {
-  const [firstData, setFirstData] = useState<any[]>([]);
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [marketDataArray, setMarketDataArray] = useState<any[]>([]);
+
+  //pagination info goes here
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 20;
-  const arrayToPaginate = firstData;
+  const arrayToPaginate = marketDataArray;
 
   const totalPages = Math.ceil(arrayToPaginate.length / itemsPerPage);
 
@@ -23,8 +27,7 @@ function App() {
 
   const client = new W3CWebSocket("wss://ws.bitpin.ir");
 
-  // Create a map to store card data with market_id as the key
-  const cardDataMap: { [key: string]: any } = {};
+  // Create a map to store card data
 
   useEffect(() => {
     async function fetchMarkets() {
@@ -33,9 +36,8 @@ function App() {
 
         if (response.ok) {
           const json = await response.json();
-          setFirstData([...json.results]);
-          console.log(firstData);
-          // Initialize cardDataMap with market_id as the key
+          setMarketDataArray([...json.results]);
+    
         } else {
           console.error("API error");
         }
@@ -47,13 +49,7 @@ function App() {
     fetchMarkets();
   }, []);
 
-  const handleData = useCallback((message: {
-    [key: number]: object
-  }) => {
-    
-  }, [firstData])
 
-  console.log(cardDataMap);
   useEffect(() => {
     // Subscribe to price info when the component mounts
     client.onopen = () => {
@@ -69,63 +65,40 @@ function App() {
       // @ts-ignore
       const message = JSON.parse(event.data);
 
-
       if (typeof message === "object") {
-
         if (typeof message.message === "string") {
-          console.error("fick")
+          console.log("message.message");
         } else {
-          setFirstData(prev => {
-            const firstDataCopy = [...prev]
+          setMarketDataArray((prev) => {
+            const marketDataArrayCopy = [...prev];
 
-            console.log({firstDataCopy})
 
-            Object.keys(message).map(key => {
-              const foundIndex = firstDataCopy.findIndex(d => d.id == key)
+            Object.keys(message).map((key) => {
+              const foundIndex = marketDataArrayCopy.findIndex((d) => d.id == key);
 
               if (foundIndex > -1) {
-                firstDataCopy[foundIndex] = {
-                  ...firstDataCopy[foundIndex],
+                marketDataArrayCopy[foundIndex] = {
+                  ...marketDataArrayCopy[foundIndex],
                   price_info: {
-                    ...firstDataCopy[foundIndex].price_info,
-                    ...message[Number(key)]
-                  }
-                }
+                    ...marketDataArrayCopy[foundIndex].price_info,
+                    ...message[Number(key)],
+                  },
+                };
               }
-            })
+            });
 
-            return firstDataCopy
-          })
+            return marketDataArrayCopy;
+          });
         }
       }
-
-      // Check if the received message is a currency price update
-      // const firstDataCopy = firstData;
-      // Object.keys(message).forEach((key) => {
-      //   const foundIndex = firstDataCopy.findIndex((item) => item.id == key);
-      //   if (foundIndex > -1) {
-      //     firstDataCopy[foundIndex] = {
-      //       ...firstDataCopy[foundIndex],
-      //       price_info: {
-      //         ...firstDataCopy[foundIndex].price_info,
-      //         ...message[key],
-      //       },
-      //     };
-      //   }
-      // });
-      // setFirstData(firstDataCopy);
-
-      //setFirstData([...Object.values(cardDataMapCopy)]);
-
-      // Update the card data in cardDataMap based on market_id
     };
 
-    // Handle WebSocket errors
+    
     client.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
 
-    // Handle WebSocket close event
+    
     client.onclose = (event) => {
       if (event.code === 1000) {
         console.log("WebSocket connection closed cleanly.");
@@ -133,7 +106,7 @@ function App() {
         console.error("WebSocket connection closed with code:", event.code);
       }
     };
-  }, [client, handleData]);
+  }, [client]);
 
   return (
     <>
@@ -142,7 +115,7 @@ function App() {
           <>
             <div className="card-container">
               {itemsOnPage.map((item, index) => (
-                <Card key={index} item={item} marketId={item.market_id} />
+                <Card key={index} item={item}  />
               ))}
             </div>
             <div>
@@ -163,7 +136,7 @@ function App() {
             </div>
           </>
         ) : (
-          <p>No items to display on this page.</p>
+          <h1>No items to display on this page please wait :)</h1>
         )}
       </div>
     </>

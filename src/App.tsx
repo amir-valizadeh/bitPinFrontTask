@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./App.css";
 
 import { w3cwebsocket as W3CWebSocket } from "websocket";
@@ -46,34 +46,74 @@ function App() {
 
     fetchMarkets();
   }, []);
+
+  const handleData = useCallback((message: {
+    [key: number]: object
+  }) => {
+    
+  }, [firstData])
+
   console.log(cardDataMap);
   useEffect(() => {
     // Subscribe to price info when the component mounts
     client.onopen = () => {
-      //console.log("WebSocket connection established.");
-      subscribeToPriceInfo();
+      const subscriptionMessage = {
+        method: "sub_to_price_info",
+      };
+      client.send(JSON.stringify(subscriptionMessage));
     };
 
     // Handle messages received from the WebSocket
     client.onmessage = (event) => {
-      //console.log(event);
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       const message = JSON.parse(event.data);
-      // console.log(message);
-      // Check if the received message is a currency price update
-      const firstDataCopy = firstData;
-      Object.keys(message).forEach((key) => {
-        const foundIndex = firstDataCopy.findIndex((item) => item.id == key);
-        if (foundIndex > -1) {
-          firstDataCopy[foundIndex] = {
-            ...firstDataCopy[foundIndex],
-            price_info: {
-              ...firstDataCopy[foundIndex].price_info,
-              ...message[key],
-            },
-          };
+
+
+      if (typeof message === "object") {
+
+        if (typeof message.message === "string") {
+          console.error("fick")
+        } else {
+          setFirstData(prev => {
+            const firstDataCopy = [...prev]
+
+            console.log({firstDataCopy})
+
+            Object.keys(message).map(key => {
+              const foundIndex = firstDataCopy.findIndex(d => d.id == key)
+
+              if (foundIndex > -1) {
+                firstDataCopy[foundIndex] = {
+                  ...firstDataCopy[foundIndex],
+                  price_info: {
+                    ...firstDataCopy[foundIndex].price_info,
+                    ...message[Number(key)]
+                  }
+                }
+              }
+            })
+
+            return firstDataCopy
+          })
         }
-      });
-      setFirstData(firstDataCopy);
+      }
+
+      // Check if the received message is a currency price update
+      // const firstDataCopy = firstData;
+      // Object.keys(message).forEach((key) => {
+      //   const foundIndex = firstDataCopy.findIndex((item) => item.id == key);
+      //   if (foundIndex > -1) {
+      //     firstDataCopy[foundIndex] = {
+      //       ...firstDataCopy[foundIndex],
+      //       price_info: {
+      //         ...firstDataCopy[foundIndex].price_info,
+      //         ...message[key],
+      //       },
+      //     };
+      //   }
+      // });
+      // setFirstData(firstDataCopy);
 
       //setFirstData([...Object.values(cardDataMapCopy)]);
 
@@ -93,15 +133,7 @@ function App() {
         console.error("WebSocket connection closed with code:", event.code);
       }
     };
-  }, []);
-
-  // Function to subscribe to price info
-  const subscribeToPriceInfo = () => {
-    const subscriptionMessage = {
-      method: "sub_to_price_info",
-    };
-    client.send(JSON.stringify(subscriptionMessage));
-  };
+  }, [client, handleData]);
 
   return (
     <>
